@@ -128,7 +128,7 @@ $deploymentId = $init
 
 #$sqlPassword = Read-Host "Please enter the SQL Password";
 #$sqlPassword = "Smoothie@2020";
-
+$cpuShell = "cpuShell$init"
 $iot_hub_car = "raceCarIotHub-$suffix"
 $iot_hub_telemetry = "mfgiothubTelemetry-$suffix"
 $iot_hub = "mfgiothub-$suffix"
@@ -1411,10 +1411,10 @@ az extension add -n azure-cli-ml
 az ml workspace create -w $amlworkspacename -g $rgName
 
 #attach a folder to set resource group and workspace name (to skip passing ws and rg in calls after this line)
-az ml folder attach -w $amlworkspacename -g $rgName
+az ml folder attach -w $amlworkspacename -g $rgName -e aml
 
 #create and delete a compute instance to get the code folder created in default store
-az ml computetarget create computeinstance -n cpuShell -s "STANDARD_D3_V2" -v
+az ml computetarget create computeinstance -n $cpuShell -s "STANDARD_D3_V2" -v
 #az ml computetarget delete -n cpuShell -v
 
 #get default data store
@@ -1423,7 +1423,7 @@ $defaultdatastoreaccname = $defaultdatastore.account_name
 
 #get fileshare and code folder within that
 $storageAcct = Get-AzStorageAccount -ResourceGroupName $rgName -Name $defaultdatastoreaccname
-$share = Get-AzStorageShare -Prefix 'code' -Context $storageAcct.Context 
+$share = Get-AzStorageShare -Context $storageAcct.Context 
 $shareName = $share.Name
 
 #create Users folder ( it wont be there unless we launch the workspace in UI)
@@ -1451,6 +1451,28 @@ Set-AzStorageFileContent `
    -Path $path
 }
 
+$share = Get-AzStorageShare -Prefix 'code' -Context $storageAcct.Context 
+$shareName = $share.Name
+$notebooks=Get-ChildItem "./artifacts/amlnotebooks" | Select BaseName
+foreach($notebook in $notebooks)
+{
+	if($notebook.BaseName -eq "config")
+	{
+		$source="./artifacts/amlnotebooks/"+$notebook.BaseName+".py"
+		$path="/Users/"+$notebook.BaseName+".py"
+	}
+	else
+	{
+		$source="./artifacts/amlnotebooks/"+$notebook.BaseName+".ipynb"
+		$path="/Users/"+$notebook.BaseName+".ipynb"
+	}
+
+Set-AzStorageFileContent `
+   -Context $storageAcct.Context `
+   -ShareName $shareName `
+   -Source $source `
+   -Path $path
+}
 #create aks compute
 #az ml computetarget create aks --name  "new-aks" --resource-group $rgName --workspace-name $amlWorkSpaceName
    
